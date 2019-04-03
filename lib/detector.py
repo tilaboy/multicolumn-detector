@@ -1,70 +1,73 @@
 import numpy as np
 import cv2
+#from pdf2image import convert_from_path, convert_from_bytes
 
 class Detector():
     def __init__(self):
-        self.letter_kernel = np.ones((2,1), np.uint8) # vertical
-        self.word_kernel = np.ones((1,4), np.uint8) # vertical
+        self.letter_kernel = np.ones((2,1), np.uint8)
+        self.word_kernel = np.ones((1,4), np.uint8)
         self.line_kernel_1 = np.ones((1,5), np.uint8)
         self.line_kernel_2 = np.ones((2,4), np.uint8)
         self.par_kernel = np.ones((5,5), np.uint8)
         self.margin_kernel = np.ones((20,5), np.uint8)
 
+
     def load_image(self, filename):
         image = cv2.imread(filename)
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        (_, th) = cv2.threshold(image_gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
-        return image, th
+        (_, threshold) = cv2.threshold(
+            image_gray,
+            0, 255,
+            cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+        )
+        return image, threshod
 
-
-    @static_method
-    def contour_and_draw(image_unit, image):
-        (contours, _) = cv2.findContours(image_unit, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    @staticmethod
+    def contour_and_draw(threshold, orig_image):
+        image = orig_image.copy()
+        (contours, _) = cv2.findContours(
+            threshold,
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE
+        )
         for cnt in contours:
-                x,y,w,h = cv2.boundingRect(cnt)
-                cv2.rectangle(image,(x-1,y-5),(x+w,y+h),(0,255,0),1)
+                (x, y, w, h) = cv2.boundingRect(cnt)
+                cv2.rectangle(image, (x-1,y-5), (x+w, y+h), (0, 255, 0), 1)
         return image
 
 
-    def find_letter(self, thresh, img):
-        # use closing morph operation then erode to narrow the image
-        morph_img = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, self.letter_kernel, iterations=3)
-        # temp_img = cv2.erode(thresh,kernel,iterations=2)
-        letter_img = cv2.erode(temp_img,self.letter_kernel,iterations=1)
-        return self.contour_and_draw(letter_img, img)
+    def find_letter(self, threshold, image):
+
+        morph_image = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, self.letter_kernel, iterations=3)
+        letter_image = cv2.erode(morph_image,self.letter_kernel,iterations=1)
+        return self.contour_and_draw(letter_image, image)
 
 
-    def find_word(self, thresh, img):
-        # use closing morph operation but fewer iterations than the letter then erode to narrow the image
-        morph_img = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, self.letter_kernel, iterations=2)
-        #temp_img = cv2.erode(thresh,kernel,iterations=2)
-        word_img = cv2.dilate(temp_img, self.word_kernel, iterations=1)
-        return self.contour_and_draw(word_img, img)
+    def find_word(self, threshold, image):
+        morph_image = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, self.letter_kernel, iterations=2)
+        word_image = cv2.dilate(morph_image, self.word_kernel, iterations=1)
+        return self.contour_and_draw(word_image, image)
 
 
-    def find_line(self, thresh, img):
-        # use closing morph operation but fewer iterations than the letter then erode to narrow the image
-        morph_img = cv2.morphologyEx(thresh,cv2.MORPH_CLOSE,self.line_kernel_2,iterations=2)
-        #temp_img = cv2.erode(thresh,kernel,iterations=2)
-        line_img = cv2.dilate(temp_img,self.line_kernel_1,iterations=5)
-        return self.contour_and_draw(line_img, img)
+    def find_line(self, threshold, image):
+        morph_image = cv2.morphologyEx(threshold,cv2.MORPH_CLOSE,self.line_kernel_2,iterations=2)
+        line_image = cv2.dilate(morph_image,self.line_kernel_1,iterations=5)
+        return self.contour_and_draw(line_image, image)
 
 
-    # processing par by par boxing
-    def find_par(self, thresh, img):
-        # assign a rectangle kernel size
-        par_img = cv2.dilate(thresh,self.par_kernel,iterations=3)
-        return self.contour_and_draw(par_img, img)
+    def find_par(self, threshold, image):
+        par_image = cv2.dilate(threshold,self.par_kernel,iterations=3)
+        return self.contour_and_draw(par_image, image)
 
 
-    def find_margin(self, thresh, img):
-        # assign a rectangle kernel size
-        margin_img = cv2.dilate(thresh,self.margin_kernel,iterations=5)
-        return self.contour_and_draw(margin_img, img)
+    def find_margin(self, threshold, image):
+        margin_image = cv2.dilate(threshold,self.margin_kernel,iterations=5)
+        return self.contour_and_draw(margin_image, image)
 
 
 if __name__ == '__main__':
     file = 'foo.jpg'
+    #images_from_path = convert_from_path('foo.pdf',output_folder=".", fmt='JPEG')
     detector = Detector()
     image, th = detector.load_image(file)
     output_letter = detector.find_letter(th,image)
