@@ -20,10 +20,10 @@ class Detector():
             0, 255,
             cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
         )
-        return image, threshod
+        return image, threshold
 
     @staticmethod
-    def contour_and_draw(threshold, orig_image):
+    def contour_and_draw(threshold, orig_image, debug=False):
         image = orig_image.copy()
         (contours, _) = cv2.findContours(
             threshold,
@@ -32,6 +32,8 @@ class Detector():
         )
         for cnt in contours:
                 (x, y, w, h) = cv2.boundingRect(cnt)
+                if debug:
+                    print(x, y, w, h)
                 cv2.rectangle(image, (x-1,y-5), (x+w, y+h), (0, 255, 0), 1)
         return image
 
@@ -57,7 +59,7 @@ class Detector():
 
     def find_par(self, threshold, image):
         par_image = cv2.dilate(threshold,self.par_kernel,iterations=3)
-        return self.contour_and_draw(par_image, image)
+        return self.contour_and_draw(par_image, image, debug=True)
 
 
     def find_margin(self, threshold, image):
